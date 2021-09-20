@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31702.278
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Inedo.ExtensionPackager", "Inedo.ExtensionPackager\Inedo.ExtensionPackager.csproj", "{2D6F880D-D13B-4E1E-9D35-5CE0DFFBD470}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2D6F880D-D13B-4E1E-9D35-5CE0DFFBD470}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2D6F880D-D13B-4E1E-9D35-5CE0DFFBD470}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2D6F880D-D13B-4E1E-9D35-5CE0DFFBD470}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2D6F880D-D13B-4E1E-9D35-5CE0DFFBD470}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {35BA7BE7-7B3A-4884-92A1-1A84E4E7EB41}
+	EndGlobalSection
+EndGlobal
