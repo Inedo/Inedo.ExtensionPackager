@@ -70,7 +70,7 @@ namespace Inedo.ExtensionPackager
             foreach (var info in infos)
                 Console.WriteLine($"{info.ContainingPath}: found {info.Name} ({GetTargetFrameworkName(info.TargetFramework)})");
 
-            string? defaultIconUrl = null;
+            string? defaultIconUrl = inputArgs.Named.GetValueOrDefault("icon-url");
 
             var first = infos[0];
             var frameworks = first.TargetFramework;
