@@ -24,3 +24,7 @@ dotnet publish -f net5.0 -c Release -o bin\pub\net5.0
 dotnet tool inedoxpack bin\pub
 ````
 This will create `<ExtensionName>.upack` in the current directory.
+
+## Configuration
+Set the `INEDOXPACK_OUTDIR` environment variable to define a default output directory for packages. If this variable is not set, packages will be created in the current directory unless
+an absolute path is specified.

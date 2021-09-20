@@ -16,13 +16,14 @@ namespace Inedo.ExtensionPackager
                 var inputArgs = InputArgs.Parse(args);
                 if (inputArgs.Positional.Length == 0)
                 {
-                    WriteUsage();
+                    await WriteUsageAsync();
                     return 1;
                 }
 
                 await (inputArgs.Positional[0] switch
                 {
                     "pack" => PackAsync(inputArgs),
+                    "help" => WriteUsageAsync(),
                     _ => throw new ConsoleException($"Invalid command: {inputArgs.Positional[0]}")
                 });
 
@@ -35,9 +36,13 @@ namespace Inedo.ExtensionPackager
             }
         }
 
-        private static void WriteUsage()
+        private static Task WriteUsageAsync()
         {
             Console.WriteLine("Usage: inedoxpack pack [SourceDirectory] [Output.upack] [-o] [--name=<name override>] [--version=<version override] [--icon-url=<icon url override>]");
+            Console.WriteLine("If SourceDirectory is not specified, the current directory is used.");
+            Console.WriteLine("If an output file is not specified, <PackageName>.upack will be used.");
+            Console.WriteLine("Set the INEDOXPACK_OUTDIR environment variable to output the package to a different default directory instead of the current directory.");
+            return Task.CompletedTask;
         }
         private static async Task PackAsync(InputArgs inputArgs)
         {
@@ -102,6 +107,9 @@ namespace Inedo.ExtensionPackager
 
             if (string.IsNullOrEmpty(outputFileName))
                 outputFileName = $"{metadata.Name}.upack";
+
+            var outDir = Environment.GetEnvironmentVariable("INEDOXPACK_OUTDIR") ?? Environment.CurrentDirectory;
+            outputFileName = Path.Combine(outDir, outputFileName);
 
             if (File.Exists(outputFileName))
             {
