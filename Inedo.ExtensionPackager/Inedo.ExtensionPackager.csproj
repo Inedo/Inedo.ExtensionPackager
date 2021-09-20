@@ -11,6 +11,10 @@
 		<PackAsTool>true</PackAsTool>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<ToolCommandName>inedoxpack</ToolCommandName>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageTags>inedo</PackageTags>
+		<RepositoryUrl>https://github.com/Inedo/Inedo.ExtensionPackager.git</RepositoryUrl>
+		<PackageProjectUrl>https://github.com/Inedo/Inedo.ExtensionPackager</PackageProjectUrl>
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="Inedo.UPack" Version="1.0.11" />
