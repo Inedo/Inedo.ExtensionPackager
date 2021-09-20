@@ -88,6 +88,7 @@ namespace Inedo.ExtensionPackager
                     assertSame(first.Description, infos[i].Description, "AsssemblyDescriptionAttribute");
                     assertSame(first.SdkVersion, infos[i].SdkVersion, "referenced Inedo SDK version");
                     assertSame(first.Products, infos[i].Products, "AppliesToAttribute");
+                    assertSame(first.IconUrl, infos[i].IconUrl, "ExtensionIconAttribute");
                     if (overriddenVersion == null)
                         assertSame(first.Version, infos[i].Version, "assembly version");
                 }
@@ -100,8 +101,11 @@ namespace Inedo.ExtensionPackager
             }
 
             Console.WriteLine($"Name: {first.Name}");
-            Console.WriteLine($"Title: {first.Title}");
+            Console.WriteLine($"Version: {first.Version}");
             Console.WriteLine($"SDK version: {first.SdkVersion.ToString(3)}");
+            Console.WriteLine($"Title: {first.Title}");
+            Console.WriteLine($"Description: {first.Description}");
+            Console.WriteLine($"Icon: {first.IconUrl ?? defaultIconUrl}");
 
             var metadata = GetPackageMetadata(first, defaultIconUrl, overriddenVersion, frameworks);
 

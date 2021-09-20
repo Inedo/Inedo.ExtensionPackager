@@ -13,7 +13,7 @@ in Microsoft's documentation for more information about using dotnet tools.
 ## Usage
 The Inedo.ExtensionPackager tool registers the `inedoxpack` command, and can be invoked with:
 ````console
-dotnet tool inedoxpack
+dotnet inedoxpack
 ````
 To package an Inedo extension, create a class library that targets one or more supported frameworks, and reference the `Inedo.SDK` NuGet package. See an existing repository such as [InedoCore](https://github.com/Inedo/inedox-inedocore)
 or [DotNet](https://github.com/Inedo/inedox-dotnet) for examples of how to create an extension. Once you are ready to build, it's recommended to do a `dotnet publish` command to make sure all
@@ -21,7 +21,7 @@ dependencies are available:
 ````console
 dotnet publish -f net452 -c Release -o bin\pub\net452
 dotnet publish -f net5.0 -c Release -o bin\pub\net5.0
-dotnet tool inedoxpack bin\pub
+dotnet inedoxpack pack bin\pub
 ````
 This will create `<ExtensionName>.upack` in the current directory.
 
