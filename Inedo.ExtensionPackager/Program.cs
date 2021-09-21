@@ -244,6 +244,7 @@ namespace Inedo.ExtensionPackager
 
             return new UniversalPackageMetadata
             {
+                Group = "inedox",
                 Name = info.Name,
                 Version = versionOverride ?? new(info.Version.Major, info.Version.Minor, Math.Max(info.Version.Build, 0)),
                 Title = info.Title,
