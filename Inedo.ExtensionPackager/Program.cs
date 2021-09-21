@@ -230,11 +230,11 @@ namespace Inedo.ExtensionPackager
         {
             var products = new List<string>(3);
             if (info.Products.HasFlag(InedoProduct.BuildMaster))
-                products.Add("buildmaster");
+                products.Add("BuildMaster");
             if (info.Products.HasFlag(InedoProduct.Otter))
-                products.Add("otter");
+                products.Add("Otter");
             if (info.Products.HasFlag(InedoProduct.ProGet))
-                products.Add("proget");
+                products.Add("ProGet");
 
             var targetFrameworks = new List<string>(2);
             if (frameworks.HasFlag(ExtensionTargetFramework.Net452))
