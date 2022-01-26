@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using Inedo.UPack;
 using Inedo.UPack.Packaging;
 
@@ -38,108 +41,195 @@ namespace Inedo.ExtensionPackager
 
         private static Task WriteUsageAsync()
         {
-            Console.WriteLine("Usage: inedoxpack pack [SourceDirectory] [Output.upack] [-o] [--name=<name override>] [--version=<version override] [--icon-url=<icon url override>]");
+            Console.WriteLine("Usage: inedoxpack pack [SourceDirectory] [Output.upack] [-o] [--name=<name override>] [--version=<version override] [--icon-url=<icon url override>] [--build=<Debug/Release>]");
             Console.WriteLine("If SourceDirectory is not specified, the current directory is used.");
             Console.WriteLine("If an output file is not specified, <PackageName>.upack will be used.");
+            Console.WriteLine("When --build is specified, SourceDirectory must refer to a directory which contains a .csproj file to build.");
             Console.WriteLine("Set the INEDOXPACK_OUTDIR environment variable to output the package to a different default directory instead of the current directory.");
             return Task.CompletedTask;
         }
         private static async Task PackAsync(InputArgs inputArgs)
         {
             var sourceDirectory = Environment.CurrentDirectory;
-            string? outputFileName = null;
-
-            if (inputArgs.Positional.Length > 1)
-                sourceDirectory = Path.Combine(sourceDirectory, inputArgs.Positional[1]);
-            if (inputArgs.Positional.Length > 2)
-                outputFileName = inputArgs.Positional[2];
-            if (inputArgs.Positional.Length > 3)
-                throw new ConsoleException($"Unexpected argument: {inputArgs.Positional[3]}");
-
-            UniversalPackageVersion? overriddenVersion = null;
-            if (inputArgs.Named.TryGetValue("version", out var versionText))
-                overriddenVersion = UniversalPackageVersion.TryParse(versionText) ?? throw new ConsoleException("Invalid version specified for --version argument.");
-
-            var infos = GetExtensionInfos(sourceDirectory, inputArgs.Named.GetValueOrDefault("name"));
-            if (infos.Count == 0)
+            bool deleteSourceDirectory = false;
+            try
             {
-                // this should never happen
-                throw new ConsoleException($"No extensions were found in {sourceDirectory}");
-            }
+                string? outputFileName = null;
 
-            foreach (var info in infos)
-                Console.WriteLine($"{info.ContainingPath}: found {info.Name} ({GetTargetFrameworkName(info.TargetFramework)})");
+                if (inputArgs.Positional.Length > 1)
+                    sourceDirectory = Path.Combine(sourceDirectory, inputArgs.Positional[1]);
+                if (inputArgs.Positional.Length > 2)
+                    outputFileName = inputArgs.Positional[2];
+                if (inputArgs.Positional.Length > 3)
+                    throw new ConsoleException($"Unexpected argument: {inputArgs.Positional[3]}");
 
-            string? defaultIconUrl = inputArgs.Named.GetValueOrDefault("icon-url");
+                UniversalPackageVersion? overriddenVersion = null;
+                if (inputArgs.Named.TryGetValue("version", out var versionText))
+                    overriddenVersion = UniversalPackageVersion.TryParse(versionText) ?? throw new ConsoleException("Invalid version specified for --version argument.");
 
-            var first = infos[0];
-            var frameworks = first.TargetFramework;
-
-            if (infos.Count > 1)
-            {
-                for (int i = 1; i < infos.Count; i++)
+                if (inputArgs.Named.TryGetValue("build", out var buildConfig))
                 {
-                    if (frameworks.HasFlag(infos[i].TargetFramework))
-                        throw new ConsoleException($"Found multiple extensions targeting {GetTargetFrameworkName(infos[i].TargetFramework)}.");
+                    var projectFile = Directory.EnumerateFiles(sourceDirectory, "*.csproj").FirstOrDefault();
+                    if (projectFile == null)
+                        throw new ConsoleException($"No .csproj files were found in {sourceDirectory} and --build was specified.");
 
-                    frameworks |= infos[i].TargetFramework;
-                    assertSame(first.Name, infos[i].Name, "assembly name");
-                    assertSame(first.Title, infos[i].Title, "AsssemblyTitleAttribute");
-                    assertSame(first.Description, infos[i].Description, "AsssemblyDescriptionAttribute");
-                    assertSame(first.SdkVersion, infos[i].SdkVersion, "referenced Inedo SDK version");
-                    assertSame(first.Products, infos[i].Products, "AppliesToAttribute");
-                    assertSame(first.IconUrl, infos[i].IconUrl, "ExtensionIconAttribute");
-                    if (overriddenVersion == null)
-                        assertSame(first.Version, infos[i].Version, "assembly version");
+                    var xdoc = XDocument.Load(projectFile);
+                    if (xdoc.Root == null)
+                        throw new ConsoleException($"{projectFile} has no root element.");
+
+                    var targetFrameworks = xdoc.Root.Elements("PropertyGroup").Elements("TargetFrameworks").SelectMany(e => e.Value.Split(';'))
+                        .Union(xdoc.Root.Elements("PropertyGroup").Elements("TargetFramework").Select(e => e.Value))
+                        .ToList();
+
+                    if (targetFrameworks.Count == 0)
+                        throw new ConsoleException($"No TargetFramework or TargetFrameworks elements found in {projectFile}");
+
+                    sourceDirectory = Path.Combine(Path.GetTempPath(), "inedoxpack", Guid.NewGuid().ToString("N"));
+                    deleteSourceDirectory = true;
+                    foreach (var framework in targetFrameworks)
+                    {
+                        Console.WriteLine($"Executing dotnet publish for {Path.GetFileName(projectFile)} ({framework})...");
+
+                        var targetPath = Path.Combine(sourceDirectory, framework);
+
+                        using var process = new Process
+                        {
+                            StartInfo = new ProcessStartInfo
+                            {
+                                FileName = OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet",
+                                ArgumentList = { "publish", projectFile, "-c", buildConfig, "-f", framework, "--nologo", "-o", targetPath, "-v", "q" },
+                                CreateNoWindow = true,
+                                UseShellExecute = false,
+                                RedirectStandardOutput = true,
+                                RedirectStandardError = true
+                            }
+                        };
+
+                        process.OutputDataReceived += (s, e) => writeLine(Console.Out, e.Data);
+                        process.ErrorDataReceived += (s, e) => writeLine(Console.Error, e.Data);
+
+                        process.Start();
+                        process.BeginOutputReadLine();
+                        process.BeginErrorReadLine();
+
+                        await process.WaitForExitAsync();
+
+                        if (process.ExitCode != 0)
+                            throw new ConsoleException($"Error building {projectFile} for {framework}.");
+
+                        static void writeLine(TextWriter output, string? line)
+                        {
+                            if (line != null)
+                                output.WriteLine(line);
+                        }
+                    }
                 }
 
-                static void assertSame<T>(T expected, T actual, string propertyName)
+                var infos = GetExtensionInfos(sourceDirectory, inputArgs.Named.GetValueOrDefault("name"), !deleteSourceDirectory);
+                if (infos.Count == 0)
                 {
-                    if (!EqualityComparer<T>.Default.Equals(expected, actual))
-                        throw new ConsoleException($"Inconsistent {propertyName} in multitargeted extension.");
+                    // this should never happen
+                    throw new ConsoleException($"No extensions were found in {sourceDirectory}");
                 }
+
+                foreach (var info in infos)
+                {
+                    var path = info.ContainingPath;
+                    if (deleteSourceDirectory)
+                        path = Path.GetFileName(path);
+
+                    Console.WriteLine($"{path}: found {info.Name} ({GetTargetFrameworkName(info.TargetFramework)})");
+                }
+
+                string? defaultIconUrl = inputArgs.Named.GetValueOrDefault("icon-url");
+
+                var first = infos[0];
+                var frameworks = first.TargetFramework;
+
+                if (infos.Count > 1)
+                {
+                    for (int i = 1; i < infos.Count; i++)
+                    {
+                        if (frameworks.HasFlag(infos[i].TargetFramework))
+                            throw new ConsoleException($"Found multiple extensions targeting {GetTargetFrameworkName(infos[i].TargetFramework)}.");
+
+                        frameworks |= infos[i].TargetFramework;
+                        assertSame(first.Name, infos[i].Name, "assembly name");
+                        assertSame(first.Title, infos[i].Title, "AsssemblyTitleAttribute");
+                        assertSame(first.Description, infos[i].Description, "AsssemblyDescriptionAttribute");
+                        assertSame(first.SdkVersion, infos[i].SdkVersion, "referenced Inedo SDK version");
+                        assertSame(first.Products, infos[i].Products, "AppliesToAttribute");
+                        assertSame(first.IconUrl, infos[i].IconUrl, "ExtensionIconAttribute");
+                        if (overriddenVersion == null)
+                            assertSame(first.Version, infos[i].Version, "assembly version");
+                    }
+
+                    static void assertSame<T>(T expected, T actual, string propertyName)
+                    {
+                        if (!EqualityComparer<T>.Default.Equals(expected, actual))
+                            throw new ConsoleException($"Inconsistent {propertyName} in multitargeted extension.");
+                    }
+                }
+
+                Console.WriteLine($"Name: {first.Name}");
+                Console.WriteLine($"Version: {first.Version}");
+                Console.WriteLine($"SDK version: {first.SdkVersion.ToString(3)}");
+                Console.WriteLine($"Title: {first.Title}");
+                Console.WriteLine($"Description: {first.Description}");
+                Console.WriteLine($"Icon: {first.IconUrl ?? defaultIconUrl}");
+
+                var metadata = GetPackageMetadata(first, defaultIconUrl, overriddenVersion, frameworks);
+
+                if (string.IsNullOrEmpty(outputFileName))
+                    outputFileName = $"{metadata.Name}.upack";
+
+                var outDir = Environment.GetEnvironmentVariable("INEDOXPACK_OUTDIR") ?? Environment.CurrentDirectory;
+                outputFileName = Path.Combine(outDir, outputFileName);
+
+                if (File.Exists(outputFileName))
+                {
+                    if (inputArgs.Named.ContainsKey("o"))
+                        File.Delete(outputFileName);
+                    else
+                        throw new ConsoleException($"{outputFileName} already exists. Specify -o to overwrite.");
+                }
+
+                Console.WriteLine($"Writing {outputFileName}...");
+                using (var upack = new UniversalPackageBuilder(outputFileName, metadata))
+                {
+                    if (infos.Count == 1)
+                    {
+                        await upack.AddContentsAsync(first.ContainingPath, string.Empty, true);
+                    }
+                    else
+                    {
+                        foreach (var info in infos)
+                            await upack.AddContentsAsync(info.ContainingPath, GetTargetFrameworkName(info.TargetFramework), true);
+                    }
+                }
+
+                Console.WriteLine("Package created.");
             }
-
-            Console.WriteLine($"Name: {first.Name}");
-            Console.WriteLine($"Version: {first.Version}");
-            Console.WriteLine($"SDK version: {first.SdkVersion.ToString(3)}");
-            Console.WriteLine($"Title: {first.Title}");
-            Console.WriteLine($"Description: {first.Description}");
-            Console.WriteLine($"Icon: {first.IconUrl ?? defaultIconUrl}");
-
-            var metadata = GetPackageMetadata(first, defaultIconUrl, overriddenVersion, frameworks);
-
-            if (string.IsNullOrEmpty(outputFileName))
-                outputFileName = $"{metadata.Name}.upack";
-
-            var outDir = Environment.GetEnvironmentVariable("INEDOXPACK_OUTDIR") ?? Environment.CurrentDirectory;
-            outputFileName = Path.Combine(outDir, outputFileName);
-
-            if (File.Exists(outputFileName))
+            finally
             {
-                if (inputArgs.Named.ContainsKey("o"))
-                    File.Delete(outputFileName);
-                else
-                    throw new ConsoleException($"{outputFileName} already exists. Specify -o to overwrite.");
-            }
-
-            Console.WriteLine($"Writing {outputFileName}...");
-            using (var upack = new UniversalPackageBuilder(outputFileName, metadata))
-            {
-                if (infos.Count == 1)
+                if (deleteSourceDirectory)
                 {
-                    await upack.AddContentsAsync(first.ContainingPath, string.Empty, true);
-                }
-                else
-                {
-                    foreach (var info in infos)
-                        await upack.AddContentsAsync(info.ContainingPath, GetTargetFrameworkName(info.TargetFramework), true);
+                    for (int i = 0; i < 5; i++)
+                    {
+                        try
+                        {
+                            Directory.Delete(sourceDirectory, true);
+                            break;
+                        }
+                        catch
+                        {
+                            await Task.Delay(1000);
+                        }
+                    }
                 }
             }
-
-            Console.WriteLine("Package created.");
         }
-        private static IReadOnlyList<ExtensionInfo> GetExtensionInfos(string path, string? name)
+        private static IReadOnlyList<ExtensionInfo> GetExtensionInfos(string path, string? name, bool logFullPath)
         {
             if (path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
             {
@@ -159,7 +249,8 @@ namespace Inedo.ExtensionPackager
                 throw new ConsoleException($"{path} not found.");
             }
 
-            Console.WriteLine($"Searching {path} for extensions...");
+            if (logFullPath)
+                Console.WriteLine($"Searching {path} for extensions...");
 
             var infos = new List<ExtensionInfo>(2);
 
