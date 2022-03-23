@@ -1,13 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
-		<TargetFramework>net5.0</TargetFramework>
+		<TargetFramework>net6.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<Authors>Inedo</Authors>
 		<Company>Inedo</Company>
 		<Product>Inedo.ExtensionPackager</Product>
 		<Description>Tool for packaging and validating Inedo extensions for ProGet, BuildMaster, and Otter.</Description>
-		<Copyright>Copyright © Inedo 2021</Copyright>
+		<Copyright>Copyright © Inedo 2022</Copyright>
 		<PackAsTool>true</PackAsTool>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<ToolCommandName>inedoxpack</ToolCommandName>
@@ -17,7 +17,7 @@
 		<PackageProjectUrl>https://github.com/Inedo/Inedo.ExtensionPackager</PackageProjectUrl>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Inedo.UPack" Version="1.0.11" />
+		<PackageReference Include="Inedo.UPack" Version="1.1.1" />
 		<PackageReference Include="Mono.Cecil" Version="0.11.4" />
 	</ItemGroup>
 </Project>

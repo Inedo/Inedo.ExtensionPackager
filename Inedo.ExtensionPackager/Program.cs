@@ -276,6 +276,16 @@ namespace Inedo.ExtensionPackager
 
                     infos.Add(info);
                 }
+                else if (Path.GetFileName(subdir) == "net6.0")
+                {
+                    Console.WriteLine("Found net6.0 subdirectory; looking for net6.0 extension...");
+
+                    var info = scanDirectory(subdir);
+                    if (info.TargetFramework != ExtensionTargetFramework.Net60)
+                        throw new ConsoleException($"Expected net6.0 extenion in {subdir} but found {GetTargetFrameworkName(info.TargetFramework)} instead.");
+
+                    infos.Add(info);
+                }
             }
 
             if (infos.Count > 0)
@@ -332,6 +342,8 @@ namespace Inedo.ExtensionPackager
                 targetFrameworks.Add("net452");
             if (frameworks.HasFlag(ExtensionTargetFramework.Net50))
                 targetFrameworks.Add("net5.0");
+            if (frameworks.HasFlag(ExtensionTargetFramework.Net60))
+                targetFrameworks.Add("net6.0");
 
             return new UniversalPackageMetadata
             {
@@ -352,6 +364,7 @@ namespace Inedo.ExtensionPackager
             {
                 ExtensionTargetFramework.Net452 => "net452",
                 ExtensionTargetFramework.Net50 => "net5.0",
+                ExtensionTargetFramework.Net60 => "net6.0",
                 _ => throw new ArgumentOutOfRangeException(nameof(f))
             };
         }

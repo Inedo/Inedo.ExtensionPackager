@@ -29,7 +29,7 @@ namespace Inedo.ExtensionPackager
                         continue;
                     }
 
-                    var name = trimmed.Slice(0, equalsIndex);
+                    var name = trimmed[..equalsIndex];
                     var value = equalsIndex < trimmed.Length - 1 ? trimmed[(equalsIndex + 1)..] : default;
                     options.Add(name.ToString(), value.ToString());
                 }
