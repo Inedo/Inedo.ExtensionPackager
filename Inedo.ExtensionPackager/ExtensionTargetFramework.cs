@@ -5,8 +5,9 @@ namespace Inedo.ExtensionPackager
     [Flags]
     internal enum ExtensionTargetFramework
     {
-        Net452,
-        Net50,
-        Net60
+        None = 0,
+        Net452 = 1,
+        Net50 = 2,
+        Net60 = 4
     }
 }
