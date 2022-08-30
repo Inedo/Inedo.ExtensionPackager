@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Diagnostics;
 using System.Xml.Linq;
 using Inedo.UPack;
 using Inedo.UPack.Packaging;
@@ -199,16 +194,36 @@ namespace Inedo.ExtensionPackager
                 {
                     if (infos.Count == 1)
                     {
-                        await upack.AddContentsAsync(first.ContainingPath, string.Empty, true);
+                        await upack.AddContentsAsync(first.ContainingPath, string.Empty, true, p => shouldIncludeFile(first.ContainingPath, p));
                     }
                     else
                     {
                         foreach (var info in infos)
-                            await upack.AddContentsAsync(info.ContainingPath, GetTargetFrameworkName(info.TargetFramework), true);
+                            await upack.AddContentsAsync(info.ContainingPath, GetTargetFrameworkName(info.TargetFramework), true, p => shouldIncludeFile(info.ContainingPath, p));
                     }
                 }
 
                 Console.WriteLine("Package created.");
+
+                static bool shouldIncludeFile(string containingPath, string fullPath)
+                {
+                    if (fullPath.StartsWith(containingPath))
+                    {
+                        var path = containingPath.AsSpan(containingPath.Length).TrimStart('/').TrimStart('\\');
+                        if (path.StartsWith("runtimes\\") || path.StartsWith("runtimes/"))
+                        {
+                            path = path["runtimes/".Length..];
+                            int index = path.IndexOfAny('/', '\\');
+                            if (index > 0)
+                            {
+                                var runtime = path[..index];
+                                return IsRuntimeSupported(runtime);
+                            }
+                        }
+                    }
+
+                    return true;
+                }
             }
             finally
             {
@@ -367,6 +382,22 @@ namespace Inedo.ExtensionPackager
                 ExtensionTargetFramework.Net60 => "net6.0",
                 _ => throw new ArgumentOutOfRangeException(nameof(f))
             };
+        }
+        private static bool IsRuntimeSupported(ReadOnlySpan<char> runtime)
+        {
+            // remove platforms that aren't x64
+            if (runtime.Contains('-') && !runtime.EndsWith("-x64"))
+                return false;
+
+            // include windows
+            if (runtime.StartsWith("win"))
+                return true;
+
+            // include linux
+            if (runtime.StartsWith("linux") || runtime.StartsWith("unix"))
+                return true;
+
+            return false;
         }
     }
 }

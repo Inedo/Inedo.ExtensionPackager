@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Inedo.ExtensionPackager
+﻿namespace Inedo.ExtensionPackager
 {
     /// <summary>
     /// Copied from Inedo.SDK.

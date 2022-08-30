@@ -1,7 +1,5 @@
-﻿using System;
-using System.Buffers.Binary;
+﻿using System.Buffers.Binary;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using Mono.Cecil;
 
 namespace Inedo.ExtensionPackager

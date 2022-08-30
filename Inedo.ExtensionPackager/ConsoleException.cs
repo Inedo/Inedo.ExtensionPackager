@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Inedo.ExtensionPackager
+﻿namespace Inedo.ExtensionPackager
 {
     internal sealed class ConsoleException : Exception
     {

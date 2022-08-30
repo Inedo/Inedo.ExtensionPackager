@@ -15,9 +15,10 @@
 		<PackageTags>inedo</PackageTags>
 		<RepositoryUrl>https://github.com/Inedo/Inedo.ExtensionPackager.git</RepositoryUrl>
 		<PackageProjectUrl>https://github.com/Inedo/Inedo.ExtensionPackager</PackageProjectUrl>
+    <ImplicitUsings>enable</ImplicitUsings>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Inedo.UPack" Version="1.1.1" />
+		<PackageReference Include="Inedo.UPack" Version="2.0.2-rc.6" />
 		<PackageReference Include="Mono.Cecil" Version="0.11.4" />
 	</ItemGroup>
 </Project>

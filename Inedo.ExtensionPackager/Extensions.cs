@@ -1,5 +1,5 @@
-﻿using Mono.Cecil;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
+using Mono.Cecil;
 
 namespace Inedo.ExtensionPackager
 {
