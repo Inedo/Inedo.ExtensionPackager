@@ -209,7 +209,7 @@ namespace Inedo.ExtensionPackager
                 {
                     if (fullPath.StartsWith(containingPath))
                     {
-                        var path = containingPath.AsSpan(containingPath.Length).TrimStart('/').TrimStart('\\');
+                        var path = fullPath.AsSpan(containingPath.Length).TrimStart('/').TrimStart('\\');
                         if (path.StartsWith("runtimes\\") || path.StartsWith("runtimes/"))
                         {
                             path = path["runtimes/".Length..];
