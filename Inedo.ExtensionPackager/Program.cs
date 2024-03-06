@@ -301,6 +301,16 @@ namespace Inedo.ExtensionPackager
 
                     infos.Add(info);
                 }
+                else if (Path.GetFileName(subdir) == "net8.0")
+                {
+                    Console.WriteLine("Found net8.0 subdirectory; looking for net8.0 extension...");
+
+                    var info = scanDirectory(subdir);
+                    if (info.TargetFramework != ExtensionTargetFramework.Net80)
+                        throw new ConsoleException($"Expected net8.0 extenion in {subdir} but found {GetTargetFrameworkName(info.TargetFramework)} instead.");
+
+                    infos.Add(info);
+                }
             }
 
             if (infos.Count > 0)
@@ -329,7 +339,7 @@ namespace Inedo.ExtensionPackager
                     if (ExtensionInfo.TryRead(fileName, out var info))
                     {
                         if (found != null)
-                            throw new ConsoleException("Found more than one assembly that references Inedo.SDK. Use the --extension-name argument to specify the primary assembly name.");
+                            throw new ConsoleException("Found more than one assembly that references Inedo.SDK. Use the --name argument to specify the primary assembly name.");
 
                         found = info;
                     }
@@ -359,6 +369,8 @@ namespace Inedo.ExtensionPackager
                 targetFrameworks.Add("net5.0");
             if (frameworks.HasFlag(ExtensionTargetFramework.Net60))
                 targetFrameworks.Add("net6.0");
+            if (frameworks.HasFlag(ExtensionTargetFramework.Net80))
+                targetFrameworks.Add("net8.0");
 
             return new UniversalPackageMetadata
             {
@@ -380,6 +392,7 @@ namespace Inedo.ExtensionPackager
                 ExtensionTargetFramework.Net452 => "net452",
                 ExtensionTargetFramework.Net50 => "net5.0",
                 ExtensionTargetFramework.Net60 => "net6.0",
+                ExtensionTargetFramework.Net80 => "net8.0",
                 _ => throw new ArgumentOutOfRangeException(nameof(f))
             };
         }

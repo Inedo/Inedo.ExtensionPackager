@@ -36,6 +36,7 @@ namespace Inedo.ExtensionPackager
             const string net452 = ".NETFramework,Version=v4.5.2";
             const string net50 = ".NETCoreApp,Version=v5.0";
             const string net60 = ".NETCoreApp,Version=v6.0";
+            const string net80 = ".NETCoreApp,Version=v8.0";
 
             if (assembly.TryGetCustomAttribute("System.Runtime.Versioning.TargetFrameworkAttribute", out var targetFrameworkAttribute))
             {
@@ -44,6 +45,7 @@ namespace Inedo.ExtensionPackager
                     net452 => ExtensionTargetFramework.Net452,
                     net50 => ExtensionTargetFramework.Net50,
                     net60 => ExtensionTargetFramework.Net60,
+                    net80 => ExtensionTargetFramework.Net80,
                     _ => throw new Exception()
                 };
             }
