@@ -1,12 +1,12 @@
-﻿namespace Inedo.ExtensionPackager
+﻿namespace Inedo.ExtensionPackager;
+
+[Flags]
+internal enum ExtensionTargetFramework
 {
-    [Flags]
-    internal enum ExtensionTargetFramework
-    {
-        None = 0,
-        Net452 = 1,
-        Net50 = 2,
-        Net60 = 4,
-        Net80 = 5,
-    }
+    None = 0,
+    Net452 = 1,
+    Net50 = 2,
+    Net60 = 4,
+    Net80 = 5,
+    Net100 = 6
 }
