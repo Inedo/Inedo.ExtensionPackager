@@ -37,6 +37,7 @@ internal record ExtensionInfo(string ContainingPath, string Name, Version Versio
         const string net50 = ".NETCoreApp,Version=v5.0";
         const string net60 = ".NETCoreApp,Version=v6.0";
         const string net80 = ".NETCoreApp,Version=v8.0";
+        const string net100 = ".NETCoreApp,Version=v10.0";
 
         if (assembly.TryGetCustomAttribute("System.Runtime.Versioning.TargetFrameworkAttribute", out var targetFrameworkAttribute))
         {
@@ -46,6 +47,7 @@ internal record ExtensionInfo(string ContainingPath, string Name, Version Versio
                 net50 => ExtensionTargetFramework.Net50,
                 net60 => ExtensionTargetFramework.Net60,
                 net80 => ExtensionTargetFramework.Net80,
+                net100 => ExtensionTargetFramework.Net100,
                 _ => throw new Exception()
             };
         }
