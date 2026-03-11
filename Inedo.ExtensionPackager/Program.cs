@@ -1,11 +1,12 @@
 ﻿using System.Diagnostics;
+using System.IO.Compression;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Inedo.UPack;
-using Inedo.UPack.Packaging;
 
 namespace Inedo.ExtensionPackager;
 
-public static class Program
+public static partial class Program
 {
     public static async Task<int> Main(string[] args)
     {
@@ -132,22 +133,21 @@ public static class Program
                 if (deleteSourceDirectory)
                     path = Path.GetFileName(path);
 
-                Console.WriteLine($"{path}: found {info.Name} ({GetTargetFrameworkName(info.TargetFramework)})");
+                Console.WriteLine($"{path}: found {info.Name} ({info.TargetFramework})");
             }
 
             string? defaultIconUrl = inputArgs.Named.GetValueOrDefault("icon-url");
 
             var first = infos[0];
-            var frameworks = first.TargetFramework;
+            var frameworks = new HashSet<string> { first.TargetFramework };
 
             if (infos.Count > 1)
             {
                 for (int i = 1; i < infos.Count; i++)
                 {
-                    if (frameworks.HasFlag(infos[i].TargetFramework))
-                        throw new ConsoleException($"Found multiple extensions targeting {GetTargetFrameworkName(infos[i].TargetFramework)}.");
+                    if (!frameworks.Add(infos[i].TargetFramework))
+                        throw new ConsoleException($"Found multiple extensions targeting {infos[i].TargetFramework}.");
 
-                    frameworks |= infos[i].TargetFramework;
                     assertSame(first.Name, infos[i].Name, "assembly name");
                     assertSame(first.Title, infos[i].Title, "AsssemblyTitleAttribute");
                     assertSame(first.Description, infos[i].Description, "AsssemblyDescriptionAttribute");
@@ -189,20 +189,35 @@ public static class Program
             }
 
             Console.WriteLine($"Writing {outputFileName}...");
-            using (var upack = new UniversalPackageBuilder(outputFileName, metadata))
+            using var outputStream = File.Create(outputFileName);
+            using var zip = new ZipArchive(outputStream, ZipArchiveMode.Create);
+            metadata.Write(zip);
+            if (infos.Count == 1)
             {
-                if (infos.Count == 1)
-                {
-                    await upack.AddContentsAsync(first.ContainingPath, string.Empty, true, p => shouldIncludeFile(first.ContainingPath, p));
-                }
-                else
-                {
-                    foreach (var info in infos)
-                        await upack.AddContentsAsync(info.ContainingPath, GetTargetFrameworkName(info.TargetFramework), true, p => shouldIncludeFile(info.ContainingPath, p));
-                }
+                addContents(zip, first.ContainingPath, string.Empty);
+            }
+            else
+            {
+                foreach (var info in infos)
+                    addContents(zip, info.ContainingPath, $"{info.TargetFramework}/");
             }
 
             Console.WriteLine("Package created.");
+
+            static void addContents(ZipArchive zip, string containingPath, string prefix)
+            {
+                foreach (var file in Directory.EnumerateFiles(containingPath, "*", SearchOption.AllDirectories))
+                {
+                    if (!shouldIncludeFile(containingPath, file))
+                        continue;
+
+                    zip.CreateEntryFromFile(
+                        file,
+                        $"package/{prefix}{file[containingPath.Length..].Replace('\\', '/').Trim('/')}",
+                        CompressionLevel.SmallestSize
+                    );
+                }
+            }
 
             static bool shouldIncludeFile(string containingPath, string fullPath)
             {
@@ -270,54 +285,13 @@ public static class Program
 
         foreach (var subdir in Directory.EnumerateDirectories(path))
         {
-            if (Path.GetFileName(subdir) == "net452")
+            var folderName = Path.GetFileName(subdir.AsSpan());
+            if (FrameworkDirectoryRegex().IsMatch(folderName))
             {
-                Console.WriteLine("Found net452 subdirectory; looking for net452 extension...");
-
                 var info = scanDirectory(subdir);
-                if (info.TargetFramework != ExtensionTargetFramework.Net452)
-                    throw new ConsoleException($"Expected net452 extenion in {subdir} but found {GetTargetFrameworkName(info.TargetFramework)} instead.");
-
-                infos.Add(info);
-            }
-            else if (Path.GetFileName(subdir) == "net5.0")
-            {
-                Console.WriteLine("Found net5.0 subdirectory; looking for net5.0 extension...");
-
-                var info = scanDirectory(subdir);
-                if (info.TargetFramework != ExtensionTargetFramework.Net50)
-                    throw new ConsoleException($"Expected net5.0 extenion in {subdir} but found {GetTargetFrameworkName(info.TargetFramework)} instead.");
-
-                infos.Add(info);
-            }
-            else if (Path.GetFileName(subdir) == "net6.0")
-            {
-                Console.WriteLine("Found net6.0 subdirectory; looking for net6.0 extension...");
-
-                var info = scanDirectory(subdir);
-                if (info.TargetFramework != ExtensionTargetFramework.Net60)
-                    throw new ConsoleException($"Expected net6.0 extenion in {subdir} but found {GetTargetFrameworkName(info.TargetFramework)} instead.");
-
-                infos.Add(info);
-            }
-            else if (Path.GetFileName(subdir) == "net8.0")
-            {
-                Console.WriteLine("Found net8.0 subdirectory; looking for net8.0 extension...");
-
-                var info = scanDirectory(subdir);
-                if (info.TargetFramework != ExtensionTargetFramework.Net80)
-                    throw new ConsoleException($"Expected net8.0 extenion in {subdir} but found {GetTargetFrameworkName(info.TargetFramework)} instead.");
-
-                infos.Add(info);
-            }
-            else if (Path.GetFileName(subdir) == "net10.0")
-            {
-                Console.WriteLine("Found net10.0 subdirectory; looking for net10.0 extension...");
-
-                var info = scanDirectory(subdir);
-                if (info.TargetFramework != ExtensionTargetFramework.Net100)
-                    throw new ConsoleException($"Expected net10.0 extenion in {subdir} but found {GetTargetFrameworkName(info.TargetFramework)} instead.");
-
+                if (!folderName.Equals(info.TargetFramework, StringComparison.Ordinal))
+                    throw new ConsoleException($"Expected {folderName} extenion in {subdir} but found {info.TargetFramework} instead.");
+                
                 infos.Add(info);
             }
         }
@@ -361,7 +335,7 @@ public static class Program
         }
 
     }
-    private static UniversalPackageMetadata GetPackageMetadata(ExtensionInfo info, string? defaultIconUrl, UniversalPackageVersion? versionOverride, ExtensionTargetFramework frameworks)
+    private static PackageMetadata GetPackageMetadata(ExtensionInfo info, string? defaultIconUrl, UniversalPackageVersion? versionOverride, HashSet<string> frameworks)
     {
         var products = new List<string>(3);
         if (info.Products.HasFlag(InedoProduct.BuildMaster))
@@ -371,41 +345,16 @@ public static class Program
         if (info.Products.HasFlag(InedoProduct.ProGet))
             products.Add("ProGet");
 
-        var targetFrameworks = new List<string>(2);
-        if (frameworks.HasFlag(ExtensionTargetFramework.Net452))
-            targetFrameworks.Add("net452");
-        if (frameworks.HasFlag(ExtensionTargetFramework.Net50))
-            targetFrameworks.Add("net5.0");
-        if (frameworks.HasFlag(ExtensionTargetFramework.Net60))
-            targetFrameworks.Add("net6.0");
-        if (frameworks.HasFlag(ExtensionTargetFramework.Net80))
-            targetFrameworks.Add("net8.0");
-        if (frameworks.HasFlag(ExtensionTargetFramework.Net100))
-            targetFrameworks.Add("net10.0");
-
-        return new UniversalPackageMetadata
+        return new PackageMetadata
         {
-            Group = "inedox",
             Name = info.Name,
-            Version = versionOverride ?? new(info.Version.Major, info.Version.Minor, Math.Max(info.Version.Build, 0)),
+            Version = (versionOverride ?? new(info.Version.Major, info.Version.Minor, Math.Max(info.Version.Build, 0))).ToString(),
             Title = info.Title,
             Description = info.Description,
             Icon = info.IconUrl ?? defaultIconUrl,
-            ["_inedoSdkVersion"] = info.SdkVersion.ToString(3),
-            ["_inedoProducts"] = products,
-            ["_targetFrameworks"] = targetFrameworks
-        };
-    }
-    private static string GetTargetFrameworkName(ExtensionTargetFramework f)
-    {
-        return f switch
-        {
-            ExtensionTargetFramework.Net452 => "net452",
-            ExtensionTargetFramework.Net50 => "net5.0",
-            ExtensionTargetFramework.Net60 => "net6.0",
-            ExtensionTargetFramework.Net80 => "net8.0",
-            ExtensionTargetFramework.Net100 => "net10.0",
-            _ => throw new ArgumentOutOfRangeException(nameof(f))
+            SdkVersion = info.SdkVersion.ToString(3),
+            Products = [.. products],
+            TargetFrameworks = [.. frameworks]
         };
     }
     private static bool IsRuntimeSupported(ReadOnlySpan<char> runtime)
@@ -424,4 +373,7 @@ public static class Program
 
         return false;
     }
+
+    [GeneratedRegex(@"\Anet[0-9]+\.[0-9]\z", RegexOptions.Singleline)]
+    private static partial Regex FrameworkDirectoryRegex();
 }

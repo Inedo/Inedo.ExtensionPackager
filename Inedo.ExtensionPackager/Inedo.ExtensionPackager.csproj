@@ -12,19 +12,21 @@
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<ToolCommandName>inedoxpack</ToolCommandName>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageTags>inedo</PackageTags>
 		<RepositoryUrl>https://github.com/Inedo/Inedo.ExtensionPackager.git</RepositoryUrl>
 		<PackageProjectUrl>https://github.com/Inedo/Inedo.ExtensionPackager</PackageProjectUrl>
-    <ImplicitUsings>enable</ImplicitUsings>
+		<ImplicitUsings>enable</ImplicitUsings>
 	</PropertyGroup>
 	<ItemGroup>
-    <None Update="Properties\launchSettings.json">
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
-    </None>
+		<None Update="Properties/launchSettings.json">
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+			<CopyToPublishDirectory>Never</CopyToPublishDirectory>
+		</None>
+		<None Include="../README.md" Link="README.md" Pack="true" PackagePath="/" />
 	</ItemGroup>
 	<ItemGroup>
-    <PackageReference Include="Inedo.UPack" Version="2.1.6" />
-    <PackageReference Include="Mono.Cecil" Version="0.11.6" />
+		<PackageReference Include="Inedo.UPack" Version="2.1.6" />
+		<PackageReference Include="Mono.Cecil" Version="0.11.6" />
 	</ItemGroup>
 </Project>

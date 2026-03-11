@@ -1,10 +1,11 @@
 ﻿using System.Buffers.Binary;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.RegularExpressions;
 using Mono.Cecil;
 
 namespace Inedo.ExtensionPackager;
 
-internal record ExtensionInfo(string ContainingPath, string Name, Version Version, Version SdkVersion, ExtensionTargetFramework TargetFramework, InedoProduct Products, string? Title = null, string? Description = null, string? IconUrl = null)
+internal partial record ExtensionInfo(string ContainingPath, string Name, Version Version, Version SdkVersion, string TargetFramework, InedoProduct Products, string? Title = null, string? Description = null, string? IconUrl = null)
 {
     public static bool TryRead(string assemblyFileName, [NotNullWhen(true)] out ExtensionInfo? extensionAssemblyInfo)
     {
@@ -31,29 +32,23 @@ internal record ExtensionInfo(string ContainingPath, string Name, Version Versio
     {
         string? iconUrl = null;
         var supportedProducts = InedoProduct.Unspecified;
-        ExtensionTargetFramework targetFramework;
-
-        const string net452 = ".NETFramework,Version=v4.5.2";
-        const string net50 = ".NETCoreApp,Version=v5.0";
-        const string net60 = ".NETCoreApp,Version=v6.0";
-        const string net80 = ".NETCoreApp,Version=v8.0";
-        const string net100 = ".NETCoreApp,Version=v10.0";
+        string targetFramework;
 
         if (assembly.TryGetCustomAttribute("System.Runtime.Versioning.TargetFrameworkAttribute", out var targetFrameworkAttribute))
         {
-            targetFramework = targetFrameworkAttribute.ConstructorArguments[0].Value?.ToString() switch
-            {
-                net452 => ExtensionTargetFramework.Net452,
-                net50 => ExtensionTargetFramework.Net50,
-                net60 => ExtensionTargetFramework.Net60,
-                net80 => ExtensionTargetFramework.Net80,
-                net100 => ExtensionTargetFramework.Net100,
-                _ => throw new Exception()
-            };
+            var f = targetFrameworkAttribute.ConstructorArguments[0].Value?.ToString();
+            if (string.IsNullOrEmpty(f))
+                throw new ConsoleException("TargetFrameworkAttribute was not found in extension assembly.");
+
+            var m = TargetVersionRegex().Match(f);
+            if (!m.Success)
+                throw new ConsoleException($"Target framework {f} not supported.");
+
+            targetFramework = $"net{m.Groups[1].ValueSpan}";
         }
         else
         {
-            throw new Exception();
+            throw new ConsoleException("TargetFrameworkAttribute was not found in extension assembly.");
         }
 
         if (assembly.TryGetCustomAttribute("Inedo.Extensibility.ExtensionIconAttribute", out var iconAttribute))
@@ -76,4 +71,7 @@ internal record ExtensionInfo(string ContainingPath, string Name, Version Versio
 
         return new ExtensionInfo(containingPath, assembly.Name.Name, assembly.Name.Version, sdkVersion, targetFramework, supportedProducts, title, description, iconUrl);
     }
+
+    [GeneratedRegex(@"\A\.NETCoreApp,Version=v(?<1>[0-9]+\.[0-9]+)\z", RegexOptions.Singleline | RegexOptions.ExplicitCapture)]
+    private static partial Regex TargetVersionRegex();
 }

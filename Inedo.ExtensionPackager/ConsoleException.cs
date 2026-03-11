@@ -1,8 +1,5 @@
 ﻿namespace Inedo.ExtensionPackager;
 
-internal sealed class ConsoleException : Exception
+internal sealed class ConsoleException(string message) : Exception(message)
 {
-    public ConsoleException(string message) : base(message)
-    {
-    }
 }
